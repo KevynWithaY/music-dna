@@ -17,6 +17,8 @@ function AudioRenderer() {
   var width = 0;
   var height = 0;
   var outerRadius = 0;
+  var baseRadius = 0;  // Store the initial radius
+  var radiusStep = 0;  // How much to increase radius per pass
 
   function onResize() {
     width = canvas.offsetWidth;
@@ -25,7 +27,9 @@ function AudioRenderer() {
     canvas.width = width;
     canvas.height = height;
 
-    outerRadius = Math.min(width, height) * 0.47;
+    baseRadius = Math.min(width, height) * 0.25;  // Start with a smaller initial radius
+    outerRadius = baseRadius;
+    radiusStep = Math.min(width, height) * 0.08;  // Space between each pass
 
     ctx.globalCompositeOperation = "lighter";
 
@@ -40,8 +44,15 @@ function AudioRenderer() {
   };
 
   this.render = function(audioData, normalizedPosition) {
+    // Calculate which pass we're on (0-3)
+    var currentPass = Math.floor(normalizedPosition * 4);
+    // Calculate position within current pass (0-1)
+    var passPosition = (normalizedPosition * 4) % 1;
+    
+    // Update outer radius based on current pass
+    outerRadius = baseRadius + (currentPass * radiusStep);
 
-    var angle = Math.PI - normalizedPosition * TAU;
+    var angle = Math.PI - passPosition * TAU;
     var color = 0;
     var lnDataDistance = 0;
     var distance = 0;
@@ -64,8 +75,9 @@ function AudioRenderer() {
       if (volume < 0.75)
         continue;
 
-      color = normalizedPosition - 0.12 + Math.random() * 0.24;
-      color = Math.round(color * 360);
+      // Adjust color based on current pass
+      color = (currentPass * 90) + passPosition * 90 + Math.random() * 24;
+      color = Math.round(color % 360);
 
       lnDataDistance = (Math.log(a - 4) / LOG_MAX) - BASE;
 
