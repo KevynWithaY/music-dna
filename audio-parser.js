@@ -30,7 +30,11 @@ function AudioParser(dataSize) {
     if (!sourceNode) {
 
       sourceNode = audioContext.createBufferSource();
-      gainNode = audioContext.createGainNode();
+      // Instead of this
+      //var gainNode = audioContext.createGainNode();
+      // Use this
+      var gainNode = audioContext.createGain();
+
 
       sourceNode.loop = false;
 
@@ -43,8 +47,12 @@ function AudioParser(dataSize) {
 
     sourceNode.buffer = buffer;
 
-    if (timePlaybackStarted === 0)
-      sourceNode.noteOn(0);
+    if (timePlaybackStarted === 0) {
+      // Instead of this
+      //sourceNode.noteOn(audioContext.currentTime);
+      // Use this
+      sourceNode.start(audioContext.currentTime);
+    }
 
     timePlaybackStarted = Date.now();
 
