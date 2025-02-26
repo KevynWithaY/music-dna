@@ -1,0 +1,186 @@
+/**
+ * Copyright 2014 Google Inc. All Rights Reserved.
+ * For licensing see http://lab.aerotwist.com/canvas/music-dna/LICENSE
+ */
+
+function AudioRenderer() {
+  "use strict";
+
+  var LOG_MAX = Math.log(128);
+  var TAU = Math.PI * 2;
+  var MAX_DOT_SIZE = 0.5;
+  var BASE = Math.log(4) / LOG_MAX;
+  var WAVEFORM_RADIUS = 15; // Radius for the center waveform
+  var WAVEFORM_WIDTH = 1.1; // Width of the waveform line
+
+  var canvas = document.getElementById('render-area');
+  var ctx = canvas.getContext('2d');
+
+  var width = 0;
+  var height = 0;
+  var outerRadius = 0;
+  var baseRadius = 0;  // Store the initial radius
+  var radiusStep = 0;  // How much to increase radius per pass
+
+  function onResize() {
+    width = canvas.offsetWidth;
+    height = canvas.offsetHeight;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    baseRadius = Math.min(width, height) * 0.25;  // Start with a smaller initial radius
+    outerRadius = baseRadius;
+    radiusStep = Math.min(width, height) * 0.08;  // Space between each pass
+
+    ctx.globalCompositeOperation = "lighter";
+
+  }
+
+  function clamp(val, min, max) {
+    return Math.min(max, Math.max(val, min));
+  }
+
+  this.clear = function() {
+    ctx.clearRect(0, 0, width, height);
+  };
+
+  /**
+   * Clears the center of the canvas for a given radius (defaults to
+   * half the base visualization radius).
+   * Ex: audioRenderer.clearCenter(); or audioRenderer.clearCenter(50);
+   * @param {number} [radius] Radius in pixels (optional)
+   */
+  this.clearCenter = function(radius) {
+    var centerRadius = radius || baseRadius * 0.5; // Default to half the base radius if no radius specified
+    var midX = width * 0.5;
+    var midY = height * 0.5;
+
+    // Save the current state
+    ctx.save();
+    
+    // Create a circular clipping path
+    ctx.beginPath();
+    ctx.arc(midX, midY, centerRadius, 0, TAU, false);
+    ctx.clip();
+    
+    // Clear the clipped area
+    ctx.clearRect(midX - centerRadius, midY - centerRadius, 
+                 centerRadius * 2, centerRadius * 2);
+    
+    // Restore the state
+    ctx.restore();
+  };
+
+  this.render = function(audioData, normalizedPosition) {
+    // Calculate which pass we're on (0-3)
+    var currentPass = Math.floor(normalizedPosition * 4);
+    // Calculate position within current pass (0-1)
+    var passPosition = (normalizedPosition * 4) % 1;
+    
+    // Update outer radius based on current pass
+    outerRadius = baseRadius + (currentPass * radiusStep);
+
+    var angle = Math.PI - passPosition * TAU;
+    var color = 0;
+    var lnDataDistance = 0;
+    var distance = 0;
+    var size = 0;
+    var volume = 0;
+
+    var x = Math.sin(angle);
+    var y = Math.cos(angle);
+    var midX = width * 0.5;
+    var midY = height * 0.5;
+
+    // First draw the main visualization with lighter composition
+    ctx.globalCompositeOperation = "lighter";
+
+    // -- MAIN VISUALIZATION --
+    // Draw the main visualization
+    for (var a = 16; a < audioData.length; a++) {
+
+      volume = audioData[a] / 255;
+
+      if (volume < 0.75)
+        continue;
+
+      // Adjust color based on current pass
+      color = (currentPass * 90) + passPosition * 90 + Math.random() * 24;
+      color = Math.round(color % 360);
+
+      lnDataDistance = (Math.log(a - 4) / LOG_MAX) - BASE;
+
+      distance = lnDataDistance * outerRadius;
+
+      // Skip if the distance would draw over the waveform area
+      if (distance < WAVEFORM_RADIUS + 10)
+        continue;
+
+      size = volume * MAX_DOT_SIZE + Math.random() * 2;
+
+      if (Math.random() > 0.995) {
+        size *= (audioData[a] * 0.2) * Math.random();
+        volume *= Math.random() * 0.25;
+      }
+
+      ctx.globalAlpha = volume * 0.09;
+      ctx.fillStyle = 'hsl(' + color + ', 80%, 50%)';
+      ctx.beginPath();
+      ctx.arc(
+        midX + x * distance,
+        midY + y * distance,
+        size, 0, TAU, false);
+      ctx.closePath();
+      ctx.fill();      
+    }
+
+    // -- WAVEFORM VISUALIZATION --
+    // Now draw the center waveform with source-over composition
+    ctx.globalCompositeOperation = "source-over";
+    this.clearCenter(WAVEFORM_RADIUS + 5);
+    
+    // Draw the circular waveform
+    ctx.lineWidth = WAVEFORM_WIDTH;
+    ctx.strokeStyle = 'rgb(255, 255, 255)';
+    
+    // Get a subset of audio data for smoother visualization
+    var step = Math.ceil(audioData.length / 180); // Reduce number of points for clearer visualization
+    var points = [];
+    
+    // First collect and smooth the data points
+    for (var i = 0; i < audioData.length; i += step) {
+      var sum = 0;
+      var count = 0;
+      // Average the values in this step
+      for (var j = 0; j < step && (i + j) < audioData.length; j++) {
+        sum += audioData[i + j];
+        count++;
+      }
+      points.push(sum / count);
+    }
+
+    // Now draw individual arcs for each point
+    for (var i = 0; i < points.length; i++) {
+      var value = points[i];
+      
+      // Calculate angles to cover the full circle (0 to TAU)
+      var startAngle = (i / points.length) * TAU;
+      var endAngle = ((i + 1) / points.length) * TAU;
+      
+      // Amplify the waveform variation for better visibility
+      var amplitude = (value / 255) * 4;
+      var radius = WAVEFORM_RADIUS + amplitude;
+      
+      ctx.beginPath();
+      ctx.arc(midX, midY, radius, startAngle, endAngle);
+      ctx.stroke(); 
+      //ctx.fill(); // kevyn
+    }
+  };
+
+  window.addEventListener('resize', onResize, false);
+  window.addEventListener('load', function() {
+    onResize();
+  }, false);
+}

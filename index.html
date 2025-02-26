@@ -6,6 +6,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
   <meta name="description" content="">
   <meta name="viewport" content="width=device-width">
 
@@ -23,6 +24,28 @@
       height: 100%;
     }
 
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #dna-canvas {
+      z-index: 1;  /* Bottom layer */
+    }
+
+    #waveform-canvas {
+      z-index: 2;  /* Top layer */
+    }
+
     #file-drop-area {
       position: fixed;
       top: 0;
@@ -35,14 +58,6 @@
 
     #file-drop-area.dropped {
       background-image: none;
-    }
-
-    canvas {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
     }
 
     #time {
@@ -83,7 +98,10 @@
 </head>
 <body>
 
-  <canvas id="render-area"></canvas>
+  <div class="canvas-container">
+    <canvas id="dna-canvas"></canvas>
+    <canvas id="waveform-canvas"></canvas>
+  </div>
   <div id="file-drop-area"></div>
 
   <div id="time"></div>

@@ -16,6 +16,43 @@ window.requestAnimFrame =
   var fileDropArea = document.getElementById('file-drop-area');
   var artist = document.getElementById('artist');
   var track = document.getElementById('track');
+  var hasStarted = false;  // Track if we've already started
+
+  // Auto-load function
+  function loadDefaultSong() {
+    if (hasStarted) return;  // Only run once
+    hasStarted = true;
+    
+    // Create a fetch request for the audio file
+    fetch('startingsong.mp3')
+      .then(response => response.blob())
+      .then(blob => {
+        // Create a File object from the blob
+        const file = new File([blob], 'startingsong.mp3', { type: 'audio/mp3' });
+        
+        // Process the file
+        musicDNA.parse(file);
+        fileDropArea.classList.add('dropped');
+
+        // Handle ID3 tags if needed
+        ID3.loadTags("startingsong.mp3", function() {
+          var tags = ID3.getAllTags("startingsong.mp3");
+          if (tags.artist)
+            artist.innerText = tags.artist;
+          if (tags.title)
+            track.innerText = tags.title;
+        }, {
+          dataReader: FileAPIReader(file)
+        });
+      })
+      .catch(error => {
+        console.error('Error loading audio file:', error);
+        hasStarted = false;  // Reset if there was an error
+      });
+  }
+
+  // Listen for the first click anywhere on the document
+  document.addEventListener('click', loadDefaultSong, { once: true });
 
   fileDropArea.addEventListener('drop', dropFile, false);
   fileDropArea.addEventListener('dragover', cancel, false);
