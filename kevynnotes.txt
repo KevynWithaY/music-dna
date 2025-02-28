@@ -1,0 +1,53 @@
+Co-pilot made this conversion of the render function for me:
+
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h> // Include the appropriate driver for your display
+
+// Assuming these values are defined elsewhere
+extern float LOG_MAX;
+extern float BASE;
+extern float outerRadius;
+extern int width;
+extern int height;
+extern float MAX_DOT_SIZE;
+extern const float TAU = 6.28318530718; // 2 * PI
+
+void render(Adafruit_GFX &display, uint8_t audioData[], int dataSize, float normalizedPosition) {
+    float angle = M_PI - normalizedPosition * TAU;
+    int color = 0;
+    float lnDataDistance = 0;
+    float distance = 0;
+    float size = 0;
+    float volume = 0;
+
+    float x = sin(angle);
+    float y = cos(angle);
+    int midX = width * 0.5;
+    int midY = height * 0.5;
+
+    for (int a = 16; a < dataSize; a++) {
+        volume = audioData[a] / 255.0;
+
+        if (volume < 0.75)
+            continue;
+
+        color = normalizedPosition - 0.12 + ((float)rand() / RAND_MAX) * 0.24;
+        color = round(color * 360);
+
+        lnDataDistance = (log(a - 4) / LOG_MAX) - BASE;
+        distance = lnDataDistance * outerRadius;
+        size = volume * MAX_DOT_SIZE + ((float)rand() / RAND_MAX) * 2;
+
+        if (((float)rand() / RAND_MAX) > 0.995) {
+            size *= (audioData[a] * 0.2) * ((float)rand() / RAND_MAX);
+            volume *= ((float)rand() / RAND_MAX) * 0.25;
+        }
+
+        display.fillCircle(
+            midX + x * distance,
+            midY + y * distance,
+            size,
+            display.color565(color, 80, 50)
+        );
+    }
+}
